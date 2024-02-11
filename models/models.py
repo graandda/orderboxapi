@@ -1,3 +1,5 @@
+from sqlalchemy.orm import relationship
+
 from db.engine import Model
 from sqlalchemy import (
     Column,
@@ -33,11 +35,14 @@ class Order(Model):
 
     id = Column(Integer, primary_key=True, nullable=False)
     customer_id = Column(Integer, ForeignKey("user.id"), nullable=False)
-    pyment_type = Column(Enum(PaymentType), nullable=False)
+    payment_type = Column(Enum(PaymentType), nullable=False)
     total = Column(DECIMAL, nullable=False)
     rest = Column(DECIMAL, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
     status = Column(Enum(OrderSatus), nullable=False)
+
+    customer = relationship("Customer")
+    order_items = relationship("OrderItems")
 
 
 class OrderItems(Model):
@@ -48,3 +53,6 @@ class OrderItems(Model):
     product_id = Column(Integer, ForeignKey("product.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     total = Column(DECIMAL, nullable=False)
+
+    order = relationship("Order")
+    product = relationship("Product")
