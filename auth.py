@@ -1,8 +1,11 @@
+import datetime
 import os
-from typing import Annotated
+from datetime import timedelta, datetime
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -10,6 +13,7 @@ from starlette import status
 
 from dependencies import get_db
 from models import models
+from models.models import Users
 
 router = APIRouter(
     prefix="/auth",
@@ -46,3 +50,46 @@ async def create_new_user(db: db_dependency, create_user: CreateUserRequest):
 
     db.add(create_user_model)
     db.commit()
+
+
+@router.post("/token", response_model=Token)
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+                                 db: db_dependency):
+    user = authenticate_user(form_data.username, form_data.password, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                           detail="Could not validate user.")
+    token = create_access_token(user.username, user.id, timedelta(minutes=20))
+
+    return {"access_token": token, "token_type": "bearer"}
+
+
+def authenticate_user(username: str, password: str, db):
+
+    user = db.query(Users).filter(Users.username == username).first()
+    if not user:
+        return False
+    if not bcrypt_context.verify(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(username: str, user_id: int, expires_delta: timedelta):
+    encode = {"sub": username, "id": user_id}
+    expires = datetime.now() + expires_delta
+    encode.update({"exp": expires})
+    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        user_id: int = payload.get("id")
+        if username is None or user_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail="Could not validate user.")
+        return {"username": username, "id": user_id}
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Could not validate user.")

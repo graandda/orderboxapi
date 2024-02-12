@@ -43,7 +43,6 @@ class Orders(Base):
     status = Column(Enum(OrderSatus), nullable=False)
 
     user = relationship("Users")
-    order_item = relationship("OrderItems")
 
 
 class OrderItems(Base):
