@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship
 
-from db.engine import Model
+from db.engine import Base
 from sqlalchemy import (
     Column,
     Integer,
@@ -11,48 +11,49 @@ from sqlalchemy import (
     ForeignKey,
     String,
 )
-from enums import PaymentType,OrderSatus
+from enums import PaymentType, OrderSatus
 
 
-class Customer(Model):
-    __tablename__ = "customer"
+class Users(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, nullable=False)
     username = Column(String, nullable=False, unique=True)
+    hashed_password = Column(String, nullable=False)
     discount = Column(Integer, nullable=False, default=0)
 
 
-class Product(Model):
-    __tablename__ = "product"
+class Products(Base):
+    __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, nullable=False)
     name = Column(String, nullable=False)
     price = Column(DECIMAL, nullable=False)
 
 
-class Order(Model):
-    __tablename__ = "order"
+class Orders(Base):
+    __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, nullable=False)
-    customer_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     payment_type = Column(Enum(PaymentType), nullable=False)
     total = Column(DECIMAL, nullable=False)
     rest = Column(DECIMAL, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
     status = Column(Enum(OrderSatus), nullable=False)
 
-    customer = relationship("Customer")
-    order_items = relationship("OrderItems")
+    user = relationship("Users")
+    order_item = relationship("OrderItems")
 
 
-class OrderItems(Model):
+class OrderItems(Base):
     __tablename__ = "order_items"
 
     id = Column(Integer, primary_key=True, nullable=False)
-    order_id = Column(Integer, ForeignKey("order.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("product.id"), nullable=False)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     total = Column(DECIMAL, nullable=False)
 
-    order = relationship("Order")
-    product = relationship("Product")
+    order = relationship("Orders")
+    product = relationship("Products")
