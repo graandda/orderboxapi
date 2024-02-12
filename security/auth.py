@@ -1,19 +1,19 @@
 import datetime
 import os
 from datetime import timedelta, datetime
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette import status
 
 from dependencies import get_db
 from models import models
-from models.models import Users
+from models.models import User
+from schemas.auth import CreateUserRequest, Token
 
 router = APIRouter(
     prefix="/auth",
@@ -28,23 +28,14 @@ bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
-class CreateUserRequest(BaseModel):
-    username: str
-    password: str
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_new_user(db: db_dependency, create_user: CreateUserRequest):
-    create_user_model = models.Users(
+    create_user_model = models.User(
         username=create_user.username,
+        login=create_user.login,
         hashed_password=bcrypt_context.hash(create_user.password),
     )
 
@@ -53,20 +44,24 @@ async def create_new_user(db: db_dependency, create_user: CreateUserRequest):
 
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-                                 db: db_dependency):
-    user = authenticate_user(form_data.username, form_data.password, db)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: db_dependency
+):
+    user = authenticate_user(
+        login=form_data.username, password=form_data.password, db=db
+    )
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                           detail="Could not validate user.")
-    token = create_access_token(user.username, user.id, timedelta(minutes=20))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user."
+        )
+    token = create_access_token(user.login, user.id, timedelta(minutes=20))
 
     return {"access_token": token, "token_type": "bearer"}
 
 
-def authenticate_user(username: str, password: str, db):
+def authenticate_user(login: str, password: str, db):
 
-    user = db.query(Users).filter(Users.username == username).first()
+    user = db.query(User).filter(User.login == login).first()
     if not user:
         return False
     if not bcrypt_context.verify(password, user.hashed_password):
@@ -74,8 +69,8 @@ def authenticate_user(username: str, password: str, db):
     return user
 
 
-def create_access_token(username: str, user_id: int, expires_delta: timedelta):
-    encode = {"sub": username, "id": user_id}
+def create_access_token(login: str, user_id: int, expires_delta: timedelta):
+    encode = {"sub": login, "id": user_id}
     expires = datetime.now() + expires_delta
     encode.update({"exp": expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -84,12 +79,15 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta):
 async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        login: str = payload.get("sub")
         user_id: int = payload.get("id")
-        if username is None or user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail="Could not validate user.")
-        return {"username": username, "id": user_id}
+        if login is None or user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate user.",
+            )
+        return {"login": login, "id": user_id}
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Could not validate user.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user."
+        )
