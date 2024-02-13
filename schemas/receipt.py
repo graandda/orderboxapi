@@ -29,3 +29,6 @@ class ReceiptResponse(BaseModel):
     total: float
     rest: float
     created_at: datetime
+
+    class Config:
+        orm_mode = True
