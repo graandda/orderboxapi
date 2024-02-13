@@ -4,7 +4,6 @@ from typing import List
 from pydantic import BaseModel
 
 from enums import PaymentType
-from schemas.product import Product
 
 
 class Payment(BaseModel):
@@ -12,14 +11,20 @@ class Payment(BaseModel):
     amount: float
 
 
+class ReceiptProduct(BaseModel):
+    name: str
+    price: float
+    quantity: int
+
+
 class CreateReceiptRequest(BaseModel):
-    products: List[Product]
+    products: List[ReceiptProduct]
     payment: Payment
 
 
 class ReceiptResponse(BaseModel):
     id: int
-    products: List[Product]
+    products: List[ReceiptProduct]
     payment: Payment
     total: float
     rest: float

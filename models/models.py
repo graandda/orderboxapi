@@ -26,12 +26,14 @@ class User(Base):
     receipts = relationship("Receipt", back_populates="user")
 
 
-class Product(Base):
-    __tablename__ = "products"
+class Payment(Base):
+    __tablename__ = "payments"
 
     id = Column(Integer, primary_key=True, nullable=False)
-    name = Column(String, nullable=False)
-    price = Column(DECIMAL, nullable=False)
+    type = Column(Enum(PaymentType), nullable=False)
+    amount = Column(DECIMAL, nullable=False)
+
+    receipt = relationship("Receipt", uselist=False, back_populates="payment")
 
 
 class Receipt(Base):
@@ -39,23 +41,23 @@ class Receipt(Base):
 
     id = Column(Integer, primary_key=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    payment_type = Column(Enum(PaymentType), nullable=False)
+    payment_id = Column(Integer, ForeignKey("payments.id"), nullable=False)
     total = Column(DECIMAL, nullable=False)
     rest = Column(DECIMAL, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
 
     user = relationship("User", back_populates="receipts")
-    products = relationship("ReceiptItem", back_populates="receipt")
+    products = relationship("ReceiptProduct", back_populates="receipt")
+    payment = relationship("Payment", uselist=False, back_populates="receipt")
 
 
-class ReceiptItem(Base):
-    __tablename__ = "receipt_items"
+class ReceiptProduct(Base):
+    __tablename__ = "receipt_products"
 
     id = Column(Integer, primary_key=True, nullable=False)
     receipt_id = Column(Integer, ForeignKey("receipts.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    name = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False)
-    total = Column(DECIMAL, nullable=False)
+    price = Column(DECIMAL, nullable=False)
 
     receipt = relationship("Receipt", back_populates="products")
-    product = relationship("Product")
