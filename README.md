@@ -68,7 +68,7 @@ git clone https://github.com/graandda/orderboxapi
 2. Change to the project directory:
 
 ```sh
-cd async-ml-inference
+cd orderboxapi
 ```
 
 3. Create environment:
