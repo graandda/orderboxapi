@@ -30,5 +30,11 @@ class ReceiptResponse(BaseModel):
     rest: float
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+
+class ReceiptText(BaseModel):
+    username: str
+    products: List[ReceiptProduct]
+    payment: Payment
+    total: float
+    rest: float
+    created_at: str

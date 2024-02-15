@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
 
-from services import receipt
+from services.receipt import receipt
 from dependencies import get_db
 from security import auth
 

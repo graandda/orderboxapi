@@ -1,14 +1,18 @@
 import datetime
+import os
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from starlette.responses import HTMLResponse
 
 from enums import PaymentType
 from models.models import Receipt, ReceiptProduct, User, Payment
 from dependencies import get_db
-from schemas.receipt import CreateReceiptRequest, ReceiptResponse
+from schemas.receipt import CreateReceiptRequest, ReceiptResponse, ReceiptText
 from security.auth import get_current_user
+
+from jinja2 import Environment, FileSystemLoader
 
 router = APIRouter(
     prefix="/receipts",
@@ -110,3 +114,51 @@ def get_all_receipt(
     db_all_user_receipts = query.offset(offset).limit(limit).all()
 
     return db_all_user_receipts
+
+
+@router.get("/{receipt_id}/text")
+async def get_receipt_text(
+    receipt_id: int, width: int = Query(40, gt=0), db: Session = Depends(get_db)
+):
+    # Отримайте чек з бази даних за його унікальним ідентифікатором
+    receipt = db.query(Receipt).filter(Receipt.id == receipt_id).first()
+    if not receipt:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+
+    user = db.query(User).filter(User.id == receipt.user_id).first()
+
+    payment = db.query(Payment).filter(Payment.id == receipt.payment_id).first()
+
+    receipt_text = ReceiptText(
+        username=user.username,
+        products=[
+            {"name": product.name, "quantity": product.quantity, "price": product.price}
+            for product in receipt.products
+        ],
+        payment={
+            "type": payment.type,
+            "amount": payment.amount,
+        },
+        total=receipt.total,
+        rest=receipt.rest,
+        created_at=receipt.created_at.strftime("%d.%m.%Y %H:%M"),
+    )
+
+    receipt_text = generate_receipt_text(receipt_text, width)
+
+    return HTMLResponse(receipt_text)
+
+
+def generate_receipt_text(receipt: ReceiptText, width: int = 40) -> str:
+    # Отримуємо поточну робочу директорію
+    current_directory = os.getcwd()
+    # Побудова абсолютного шляху до папки templates у вашому поточному каталозі
+    templates_directory = os.path.join("templates")
+
+    env = Environment(loader=FileSystemLoader("templates"))
+
+    template = env.get_template("receipt_template.html")
+    html_content = template.render(
+        receipt=receipt, width=width, products_count=len(receipt.products)
+    )
+    return html_content

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рахунок</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        p {
+            margin: 0;
+            padding: 0;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        .receipt {
+            max-width: {{ width }}px; /* Задаємо максимальну ширину */
+            margin: 0 auto; /* Центруємо чек на сторінці */
+            padding: 10px; /* Додаємо відступи для кращого вигляду */
+        }
+        .center-header {
+            text-align: center;
+            padding: 15px 0;
+            border-bottom: 4px double black;
+        }
+        .center-bottom {
+            text-align: center;
+            padding: 5px 0;
+            border-top: 4px double black;
+        }
+        .product {
+            padding: 5px 0;
+        }
+        .product-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .d {
+            display: flex;
+            flex-direction: row;
+            align-items: end;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        .total-info {
+            padding: 5px 0;
+        }
+
+        .product-name {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        .product-price {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        .underline
+        {
+            border-bottom: 2px dashed black;
+        }
+
+        .underline-double
+        {
+            border-bottom: 4px double black;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="receipt">
+            <div class="center-header">{{ receipt.username }}</div>
+
+                {% for product in receipt.products %}
+                <div class="product">
+
+                    <div class="product-info">
+                        <p class="product-price">{{ product.quantity }} x {{ '{:,.2f}'.format(product.price).replace(',', ' ') }}</p>
+
+                        <p class="d">
+                            <span class="product-name">{{ product.name }}</span>
+                            <span class="product-price">{{ '{:,.2f}'.format(product.quantity * product.price).replace(',', ' ') }}</span>
+                        </p>
+
+                    </div>
+                </div>
+                {% if receipt.products.index(product) < products_count - 1 %}
+                    <div class="underline"></div>
+                {% endif %}
+            {% endfor %}
+            <div class="underline-double"></div>
+            <div class="total-info">
+                <p class="d">
+                    <span>СУМА</span>
+                    <span class="product-price">{{ '{:,.2f}'.format(receipt.total).replace(',', ' ') }}</span>
+                </p>
+                <p class="d">
+                    <span>{% if receipt.payment.type == 'cash' %}Готівка{% else %}Картка{% endif %}</span>
+                    <span class="product-price">{{ '{:,.2f}'.format(receipt.payment.amount).replace(',', ' ')  }}</span>
+                </p>
+                <p class="d">
+                    <span>Решта</span>
+                    <span class="product-price">{{ '{:,.2f}'.format(receipt.rest).replace(',', ' ') }}</span>
+                </p>
+
+            </div>
+
+            <div class="center-bottom">
+                <p class="right">{{ receipt.created_at }}</p>
+                <p>Дякуємо за покупку!</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
